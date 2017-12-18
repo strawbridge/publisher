@@ -46,4 +46,21 @@ namespace :service_sign_in do
       puts file
     end
   end
+
+  desc "Validate all files in service_sign_in directiory are valid YAML files"
+  task validate_all: [:environment] do
+    directiory = File.join(Rails.root, "lib/service_sign_in")
+    Dir.foreach(directiory) do |filename|
+      next if filename == '.' or filename == '..'
+
+      # Check file has right extension
+      extension = File.extname(directiory + filename)
+      if extension != '.yaml'
+        abort "Warning: #{filename} does not have a .yaml file extension"
+      end
+
+      # Check file is valid YAML
+      Rake::Task['service_sign_in:validate'].invoke(filename)
+    end
+  end
 end
