@@ -1,0 +1,47 @@
+require "test_helper"
+require "gds_api/test_helpers/link_checker_api"
+
+class LinkCheckReportsControllerTest < ActionController::TestCase
+  include GdsApi::TestHelpers::LinkCheckerApi
+  include Rails.application.routes.url_helpers
+
+  def create_edition(govspeak)
+    FactoryGirl.create(:place_edition, introduction: govspeak)
+  end
+
+  setup do
+    login_as_stub_user
+    link = "https://www.gov.uk"
+
+    @edition = FactoryGirl.create(:place_edition, introduction: "[link](#{link})")
+
+    @stubbed_api_request = link_checker_api_create_batch(
+      uris: ['https://www.gov.uk'],
+      id: 'a-batch-id',
+      webhook_uri: link_checker_api_callback_url(host: Plek.find('manuals-publisher')),
+      webhook_secret_token: Rails.application.secrets.link_checker_api_secret_token
+    )
+  end
+
+  context '#create' do
+    should 'create and link report and redirect on a normal request' do
+      post :create, params: { edition_id: @edition.id }
+
+      @edition.reload
+
+      assert_redirected_to(controller: 'editions', action: 'show', id: @edition.id)
+      assert @edition.link_check_reports.any?
+      assert 'a-batch-id', @edition.link_check_reports.last.batch_id
+    end
+
+    should 'create and render the create template on AJAX' do
+      post :create, params: { edition_id: @edition.id }, xhr: true
+
+      assert_response :success
+      assert_template :create
+
+      assert @edition.link_check_reports.any?
+      assert 'a-batch-id', @edition.link_check_reports.last.batch_id
+    end
+  end
+end
