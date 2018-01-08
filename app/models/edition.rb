@@ -441,6 +441,12 @@ class Edition
     artefact.content_id
   end
 
+  def latest_link_check_report
+    return nil if link_check_reports.empty?
+
+    link_check_reports.last
+  end
+
 private
 
   def base_field_keys
